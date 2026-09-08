@@ -98,6 +98,7 @@ button:hover { background: var(--code-bg); }
 .match-banner { font-weight: 600; margin: 0.5rem 0; padding: 0.5rem; border-radius: 6px; }
 .match-banner.match { color: var(--pass); }
 .match-banner.miss { color: var(--block); background: var(--code-bg); }
+.match-banner.weaker { color: var(--warn); background: var(--code-bg); }
 .case-source { color: var(--muted); font-size: 0.85rem; margin: 0.25rem 0 1rem; white-space: pre-wrap; }
 
 .frame-card { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem; background: var(--panel-bg); }

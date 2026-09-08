@@ -17,8 +17,10 @@ function el(tag, attrs = {}, children = []) {
   for (const [k, v] of Object.entries(attrs)) {
     if (v === undefined || v === null || v === false) continue;
     if (k === "class") node.className = v;
-    else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2), v);
-    else node.setAttribute(k, v === true ? "" : v);
+    else if (k.startsWith("on")) {
+      if (typeof v !== "function") throw new TypeError(`el(): ${k} must be a function, never a string`);
+      node.addEventListener(k.slice(2), v);
+    } else node.setAttribute(k, v === true ? "" : v);
   }
   for (const child of [].concat(children)) {
     if (child === null || child === undefined) continue;
@@ -170,14 +172,15 @@ async function main() {
     const live = "error" in frames[0] ? "error" : inspectFrame(frames[0].frame).action;
     const expected = kase.expected.action;
     const isMatch = live === expected;
-
-    const banner = el(
-      "p",
-      { class: `match-banner ${isMatch ? "match" : "miss"}` },
-      isMatch
-        ? `✓ match — expected ${expected}, got ${live}.`
-        : `✗ MISS — expected ${expected}, got ${live} — a documented single-frame miss; see the case's source below.`,
-    );
+    // Three honest outcomes: exact match; flagged at a weaker action than the corpus
+    // expects (not a miss — the guard saw it); or not flagged at all (a miss). Every
+    // one is reproducible with the CLI command at the bottom of the page.
+    const bannerText = isMatch
+      ? `✓ match — expected ${expected}, got ${live}.`
+      : live === "pass"
+        ? `✗ MISS — expected ${expected}, got pass: this engine version does not flag this frame. Reproduce it with the CLI command below.`
+        : `△ flagged as ${live}, expected ${expected}: detected, but at a weaker action than the corpus expects. Reproduce it with the CLI command below.`;
+    const banner = el("p", { class: `match-banner ${isMatch ? "match" : live === "pass" ? "miss" : "weaker"}` }, bannerText);
     const source = el("p", { class: "case-source", id: "case-context" }, [
       banner,
       kase.source ? el("span", {}, kase.source) : el("span", { class: "hint" }, "No source recorded."),

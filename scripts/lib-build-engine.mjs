@@ -1,7 +1,7 @@
 // Shared core for build-engine.mjs and check-engine.mjs — the drift guard
 // must build with EXACTLY the same steps as the real build, or a divergence
 // between the two would let drift go undetected.
-import { rmSync, writeFileSync, readFileSync, mkdirSync } from "node:fs";
+import { rmSync, writeFileSync, readFileSync, mkdirSync, mkdtempSync, copyFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -22,13 +22,7 @@ export async function buildEngine(outDir) {
   const repo = process.env.CLI_REPO || lock.cli.repo;
   const tag = lock.cli.tag;
 
-  // A FIXED path, not mkdtemp: esbuild's bundle comments embed each module's
-  // path relative to cwd, so a random tmpdir suffix would make two otherwise
-  // byte-identical builds "drift" on nothing but that suffix — check-engine.mjs
-  // rebuilds from scratch and byte-compares, so build determinism matters here.
-  const tmp = path.join(tmpdir(), "guard-playground-cli-src");
-  rmSync(tmp, { recursive: true, force: true });
-  mkdirSync(tmp, { recursive: true });
+  const tmp = mkdtempSync(path.join(tmpdir(), "guard-playground-cli-src-"));
   try {
     console.log(`Fetching ${repo} @ ${tag} ...`);
     git(["init", "-q"], tmp);
@@ -54,15 +48,24 @@ export async function buildEngine(outDir) {
       ].join("\n"),
     );
 
+    // Byte-determinism across machines: esbuild writes each bundled module's
+    // path RELATIVE TO absWorkingDir as a comment. Everything the bundle sees
+    // must therefore live under one root — the checkout — including the shim
+    // (copied in), and absWorkingDir must be that root, so the comments read
+    // `src/guard/...` on every machine instead of a path through the tmpdir.
+    const shimPath = path.join(tmp, "_buffer-shim.js");
+    copyFileSync(path.join(ROOT, "scripts", "buffer-shim.js"), shimPath);
+
     mkdirSync(outDir, { recursive: true });
     await esbuild.build({
+      absWorkingDir: tmp,
       entryPoints: [entryPath],
       outfile: path.join(outDir, "engine.mjs"),
       bundle: true,
       platform: "browser",
       format: "esm",
       target: "es2022",
-      inject: [path.join(ROOT, "scripts", "buffer-shim.js")],
+      inject: [shimPath],
       logLevel: "info",
     });
 

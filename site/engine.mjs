@@ -1,4 +1,4 @@
-// scripts/buffer-shim.js
+// _buffer-shim.js
 var ALPHABET = new Int8Array(128).fill(-1);
 {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -52,7 +52,7 @@ if (typeof globalThis.Buffer === "undefined") {
   globalThis.Buffer = { from };
 }
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/patterns.ts
+// src/guard/patterns.ts
 var MAX_LEAF_WALK_NODES = 1e5;
 function* stringLeaves(node, budget) {
   const stack = [node];
@@ -628,7 +628,7 @@ function inspectMessage(msg, signatures) {
   return { action: worstAction(findings), findings };
 }
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/key-canon.ts
+// src/guard/key-canon.ts
 function canonicalizeKey(rawKey) {
   const folded = normalizeForMatch(rawKey);
   const camelSplit = folded.replace(/([a-z0-9])([A-Z])/g, "$1_$2");
@@ -638,7 +638,7 @@ function canonicalToolName(rawName) {
   return normalizeForMatch(rawName).toLowerCase();
 }
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/exfil-names.ts
+// src/guard/exfil-names.ts
 var EXFIL_PARAM_DENY = [
   /^_system_prompt_$/,
   /^_conversation_history_$/,
@@ -653,7 +653,7 @@ function classifyParamName(rawKey) {
   return EXFIL_PARAM_DENY.some((re) => re.test(canonical)) ? "deny" : null;
 }
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/exfil-params.ts
+// src/guard/exfil-params.ts
 var EXFIL_PARAM_SIGNATURE_ID = "exfil-param-in-schema";
 var PASS = { action: "pass", findings: [] };
 var REMEDIATION = "A tool's input schema declares a parameter named like a context-exfiltration sigil (e.g. `_system_prompt_`) that the model would silently auto-fill from the conversation / system prompt \u2014 a zero-interaction prompt leak. No legitimate tool names a parameter this way. The server's ENTIRE tools/list was blocked before the agent saw it. This is a tripwire for the documented underscore-sigil convention \u2014 a renamed parameter evades it. If you trust this server, mute via `mcpm guard mute exfil-param-in-schema` (re-enables the whole server).";
@@ -695,7 +695,7 @@ function detectExfilParams(msg) {
   return { action: worstAction(findings), findings };
 }
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/tool-call-args-walk.ts
+// src/guard/tool-call-args-walk.ts
 var MAX_DEPTH = 1;
 function* stringArgLeaves(node, depth = 0) {
   if (node === null || typeof node !== "object") return;
@@ -725,7 +725,7 @@ function toolCallArguments(msg) {
   return { toolName, args };
 }
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/shell-metachar-args.ts
+// src/guard/shell-metachar-args.ts
 var SHELL_METACHAR_ARG_SIGNATURE_ID = "shell-metachar-in-identifier-arg";
 var PASS2 = { action: "pass", findings: [] };
 var IDENTIFIER_KEY_SUFFIXES = /* @__PURE__ */ new Set([
@@ -800,7 +800,7 @@ function detectShellMetacharArgs(msg) {
   return { action: worstAction(findings), findings };
 }
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/query-control-args.ts
+// src/guard/query-control-args.ts
 var QUERY_CONTROL_ARG_SIGNATURE_ID = "query-control-syntax-in-identifier-arg";
 var PASS3 = { action: "pass", findings: [] };
 var RESOURCE_NOUN_TOKENS = /* @__PURE__ */ new Set([
@@ -880,7 +880,7 @@ function detectQueryControlArgs(msg) {
   return { action: worstAction(findings), findings };
 }
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/cli-flag-injection-args.ts
+// src/guard/cli-flag-injection-args.ts
 var CLI_FLAG_INJECTION_ARG_SIGNATURE_ID = "cli-flag-injection-in-identifier-arg";
 var PASS4 = { action: "pass", findings: [] };
 var FLAG_INJECTION_KEY_SUFFIXES = /* @__PURE__ */ new Set([
@@ -942,7 +942,7 @@ function detectCliFlagInjectionArgs(msg) {
   return { action: worstAction(findings), findings };
 }
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/sanitize.ts
+// src/guard/sanitize.ts
 var ANSI_AND_C1_CONTROL = (
   // ESC followed by single-char dispatch (@-Z, \, -, _) OR CSI [..letter
   // eslint-disable-next-line no-control-regex
@@ -959,7 +959,7 @@ function sanitizeForTerminal(s, maxLen = DEFAULT_MAX_LEN) {
   return stripped.length > maxLen ? `${stripped.slice(0, maxLen)}\u2026` : stripped;
 }
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/tool-name-confusable.ts
+// src/guard/tool-name-confusable.ts
 var CONFUSABLE_TOOL_NAME_SIGNATURE_ID = "tool-name-confusable-duplicate";
 var DECEPTIVE_TOOL_NAME_SIGNATURE_ID = "tool-name-deceptive-characters";
 var INVISIBLE_CHARS = /[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\u206A-\u206F\uFEFF]|[\u{E0000}-\u{E007F}]/u;
@@ -1023,7 +1023,7 @@ function detectConfusableToolNames(msg) {
   return { action: worstAction(findings), findings };
 }
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/signatures.ts
+// src/guard/signatures.ts
 var SOLICIT_VERB = "(?:enter|re-?enter|type|paste|provide|input|share|submit|confirm|reveal|supply|restore|recover|verify|key[\\s-]*in|fill[\\s-]*in)";
 var solicits = (noun) => new RegExp(`${SOLICIT_VERB}[\\s\\S]{0,40}(?:${noun})`, "i");
 var ELECTRON_MCP_BRIDGE_CALL = "electron\\s*\\.\\s*mcp\\s*\\.\\s*(?:activate|addServer)\\s*\\(";
@@ -1586,7 +1586,7 @@ var OWASP_MCP_TOP_10 = [
   }
 ];
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/inspect-frame.ts
+// src/guard/inspect-frame.ts
 function withReplyToOrigin(result, replyToOrigin) {
   if (replyToOrigin && result.action === "block") return { ...result, replyToOrigin: true };
   return result;
@@ -1651,7 +1651,7 @@ function inspectFrame(msg) {
   return inspectStatelessDetectors(msg);
 }
 
-// ../../../../../private/var/folders/6v/rz3d3jdn1pj_0blc8jhky5400000gn/T/guard-playground-cli-src/src/guard/owasp.ts
+// src/guard/owasp.ts
 var OWASP_MCP_TOP_10_REF = "165fe0f78ef104459237b4a8e0f6e78db9b02391";
 var OWASP_MCP_TOP_10_URL = `https://github.com/OWASP/www-project-mcp-top-10/tree/${OWASP_MCP_TOP_10_REF}`;
 var OWASP_MCP_TOP_10_TAXA = [
