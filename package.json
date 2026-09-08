@@ -5,6 +5,9 @@
   "description": "Paste an MCP JSON-RPC frame, see mcpm guard's real verdict — runs entirely in your browser.",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
   "scripts": {
     "build:engine": "node scripts/build-engine.mjs",
     "sync:corpus": "node scripts/sync-corpus.mjs",
