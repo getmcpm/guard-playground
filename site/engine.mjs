@@ -1654,18 +1654,6 @@ function inspectFrame(msg) {
 // src/guard/owasp.ts
 var OWASP_MCP_TOP_10_REF = "165fe0f78ef104459237b4a8e0f6e78db9b02391";
 var OWASP_MCP_TOP_10_URL = `https://github.com/OWASP/www-project-mcp-top-10/tree/${OWASP_MCP_TOP_10_REF}`;
-var OWASP_MCP_TOP_10_TAXA = [
-  { id: "MCP01", name: "Token Mismanagement & Secret Exposure" },
-  { id: "MCP02", name: "Privilege Escalation via Scope Creep" },
-  { id: "MCP03", name: "Tool Poisoning" },
-  { id: "MCP04", name: "Software Supply Chain Attacks & Dependency Tampering" },
-  { id: "MCP05", name: "Command Injection & Execution" },
-  { id: "MCP06", name: "Intent Flow Subversion" },
-  { id: "MCP07", name: "Insufficient Authentication & Authorization" },
-  { id: "MCP08", name: "Lack of Audit and Telemetry" },
-  { id: "MCP09", name: "Shadow MCP Servers" },
-  { id: "MCP10", name: "Context Injection & Over-Sharing" }
-];
 var CONFINE_EVENT_OWASP = {
   "confine-applied": "unpinnable",
   "confine-marker-stripped": "unpinnable",
@@ -1734,10 +1722,7 @@ function owaspPinFor(signatureId) {
   return { status: "pinned", id: state, ref: OWASP_MCP_TOP_10_REF };
 }
 export {
-  OWASP_MCP_TOP_10_REF,
-  OWASP_MCP_TOP_10_TAXA,
   OWASP_MCP_TOP_10_URL,
-  OWASP_MCP_TOP_10 as SIGNATURES,
   inspectFrame,
   owaspPinFor
 };

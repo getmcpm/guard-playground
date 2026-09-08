@@ -55,17 +55,14 @@ export async function buildEngine(outDir, { lock: lockOverride } = {}) {
 
     const guardDir = path.join(tmp, "src", "guard");
     const entryPath = path.join(guardDir, "_playground-entry.ts");
+    // Only what site/app.js (and the test suite's inspectFrame() import)
+    // actually use — signatures.ts is still pulled in transitively (both
+    // owasp.ts and inspect-frame.ts depend on it), it's just not re-exported.
     writeFileSync(
       entryPath,
       [
         'export { inspectFrame } from "./inspect-frame.js";',
-        "export {",
-        "  owaspPinFor,",
-        "  OWASP_MCP_TOP_10_REF,",
-        "  OWASP_MCP_TOP_10_URL,",
-        "  OWASP_MCP_TOP_10_TAXA,",
-        '} from "./owasp.js";',
-        'export { OWASP_MCP_TOP_10 as SIGNATURES } from "./signatures.js";',
+        'export { owaspPinFor, OWASP_MCP_TOP_10_URL } from "./owasp.js";',
         "",
       ].join("\n"),
     );
