@@ -1,0 +1,11 @@
+{
+  "cli": {
+    "repo": "https://github.com/getmcpm/cli.git",
+    "tag": "v0.39.1",
+    "commit": "52d7d2b203901e77d769a457511bfe4a6647ba12"
+  },
+  "guardbench": {
+    "repo": "https://github.com/getmcpm/mcp-guardbench.git",
+    "commit": "d2250f4bbb8f6781779410e2863a934474283bf0"
+  }
+}

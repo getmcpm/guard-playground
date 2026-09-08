@@ -1,0 +1,19 @@
+{
+  "name": "guard-playground",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Paste an MCP JSON-RPC frame, see mcpm guard's real verdict — runs entirely in your browser.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build:engine": "node scripts/build-engine.mjs",
+    "sync:corpus": "node scripts/sync-corpus.mjs",
+    "check:engine": "node scripts/check-engine.mjs",
+    "test": "node --test test/*.test.mjs",
+    "serve": "python3 -m http.server 8080 -d site"
+  },
+  "devDependencies": {
+    "@getmcpm/cli": "0.39.1",
+    "esbuild": "0.28.1"
+  }
+}
