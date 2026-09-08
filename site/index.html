@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+<title>mcpm guard playground</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="site-header">
+  <h1>mcpm guard playground</h1>
+  <p id="engine-badge">loading engine info…</p>
+  <nav id="header-links"></nav>
+  <p class="disclaimer">
+    Runs entirely in your browser. Nothing you paste leaves this tab — there is no server,
+    no analytics, no telemetry.
+  </p>
+</header>
+
+<main>
+  <section id="corpus-panel" aria-label="Case corpus">
+    <h2>Corpus</h2>
+    <p class="hint">Click a case to load it and see mcpm's live verdict against the expected one.</p>
+    <div id="corpus-list"></div>
+  </section>
+
+  <section id="inspect-panel" aria-label="Frame inspector">
+    <h2>Inspect a frame</h2>
+    <textarea id="frame-input" spellcheck="false"
+      placeholder="Paste one MCP JSON-RPC frame, or NDJSON (one frame per line)"></textarea>
+    <div class="controls">
+      <button id="inspect-btn" type="button">Inspect</button>
+      <button id="share-btn" type="button">Share</button>
+      <span id="share-note" hidden></span>
+    </div>
+
+    <div id="results" aria-live="polite"></div>
+
+    <details id="copy-cli">
+      <summary>Copy as CLI</summary>
+      <pre id="cli-block"></pre>
+      <button id="copy-cli-btn" type="button">Copy</button>
+      <span id="copy-cli-note" hidden></span>
+    </details>
+  </section>
+</main>
+
+<footer>
+  <p>
+    Engine: the stateless detector set from @getmcpm/cli, built from the tag named above.
+    Single-frame verdicts with the catalog's default actions; no local policy applied. The
+    same-session pin/drift defense — the part that catches a Deadbugz-style flip — needs the
+    relay (<code>mcpm guard enable</code>) and is not in this page.
+  </p>
+  <p>
+    This page is a demo, not a score. Scores come from
+    <a href="https://github.com/getmcpm/mcp-guardbench">mcp-guardbench</a>, where every guard
+    runs through its own published CLI.
+  </p>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
