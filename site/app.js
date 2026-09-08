@@ -82,11 +82,22 @@ function frameCard(index, entry) {
       el("p", { class: "error-text" }, entry.error),
     ]);
   }
-  const result = inspectFrame(entry.frame);
-  return el("div", { class: "frame-card" }, [
-    el("h3", {}, [`frame ${index + 1}`, actionChip(result.action)]),
-    findingsTable(result.findings),
-  ]);
+  // renderResults() builds one card per frame inside a debounced input
+  // handler; an uncaught throw here would abort that whole map() and leave
+  // the PREVIOUS render's cards on screen looking like a stale "verdict" for
+  // the frame that actually just crashed the inspector. Contain it per-card.
+  try {
+    const result = inspectFrame(entry.frame);
+    return el("div", { class: "frame-card" }, [
+      el("h3", {}, [`frame ${index + 1}`, actionChip(result.action)]),
+      findingsTable(result.findings),
+    ]);
+  } catch (err) {
+    return el("div", { class: "frame-card" }, [
+      el("h3", {}, [`frame ${index + 1}`, actionChip("error")]),
+      el("p", { class: "error-text" }, err instanceof Error ? err.message : String(err)),
+    ]);
+  }
 }
 
 function cliSnippet(rawInput, version) {
