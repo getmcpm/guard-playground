@@ -9,6 +9,13 @@ import * as esbuild from "esbuild";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
+// Hardcoded upstream source of truth — never read from the lockfile. A lock
+// that also carried the repo URL could point buildEngine at an attacker- or
+// mistake-controlled remote while still "matching" its own commit field.
+// CLI_REPO stays available as a local-dev override (see README), but the
+// commit-pin check below runs unconditionally regardless of override.
+const CLI_REPO_URL = "https://github.com/getmcpm/cli.git";
+
 function git(args, cwd) {
   return execFileSync("git", args, { cwd, stdio: ["ignore", "pipe", "inherit"] }).toString().trim();
 }
@@ -16,10 +23,17 @@ function git(args, cwd) {
 /**
  * Fetches the pinned cli tag and bundles engine.mjs + engine-meta.json into
  * `outDir`. Returns the meta object that was written.
+ *
+ * Fail-closed on the locked commit: a moved tag (or an overridden repo that
+ * doesn't carry the pinned history) makes the build THROW rather than quietly
+ * bundling whatever the tag now resolves to.
  */
-export async function buildEngine(outDir) {
-  const lock = JSON.parse(readFileSync(path.join(ROOT, "engine.lock.json"), "utf8"));
-  const repo = process.env.CLI_REPO || lock.cli.repo;
+export async function buildEngine(outDir, { lock: lockOverride } = {}) {
+  const lock = lockOverride ?? JSON.parse(readFileSync(path.join(ROOT, "engine.lock.json"), "utf8"));
+  const repo = process.env.CLI_REPO || CLI_REPO_URL;
+  if (process.env.CLI_REPO) {
+    console.warn(`⚠ CLI_REPO override active — fetching from ${repo} instead of ${CLI_REPO_URL}.`);
+  }
   const tag = lock.cli.tag;
 
   const tmp = mkdtempSync(path.join(tmpdir(), "guard-playground-cli-src-"));
@@ -30,6 +44,14 @@ export async function buildEngine(outDir) {
     git(["fetch", "--depth", "1", "origin", tag], tmp);
     git(["checkout", "-q", "FETCH_HEAD"], tmp);
     const commit = git(["rev-parse", "HEAD"], tmp);
+
+    if (commit !== lock.cli.commit) {
+      throw new Error(
+        `engine.lock.json pins cli commit ${lock.cli.commit} for tag ${tag}, but ${repo} @ ${tag} ` +
+          `now resolves to ${commit}. The tag no longer points at the locked commit — investigate ` +
+          "before re-pinning engine.lock.json (this is not something to silently re-lock and commit).",
+      );
+    }
 
     const guardDir = path.join(tmp, "src", "guard");
     const entryPath = path.join(guardDir, "_playground-entry.ts");
