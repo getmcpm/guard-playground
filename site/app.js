@@ -238,6 +238,15 @@ async function main() {
   });
 
   document.getElementById("share-btn").addEventListener("click", () => {
+    // A lone surrogate can't round-trip through TextEncoder: it silently
+    // folds to U+FFFD, so the shared link would decode to different text
+    // than what's in the textarea. Refuse rather than share something wrong.
+    if (!textarea.value.isWellFormed()) {
+      shareNote.hidden = false;
+      shareNote.textContent =
+        "Could not share: the text contains a lone surrogate and cannot be encoded faithfully.";
+      return;
+    }
     const bytes = new TextEncoder().encode(textarea.value).length;
     if (bytes > SHARE_LIMIT_BYTES) {
       shareNote.hidden = false;
