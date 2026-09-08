@@ -274,8 +274,19 @@ async function main() {
   // ---- restore from a shared link, if present --------------------------
   if (location.hash.startsWith("#f=")) {
     try {
-      textarea.value = fromBase64Url(location.hash.slice(3));
-      runInspect();
+      const decoded = fromBase64Url(location.hash.slice(3));
+      const bytes = new TextEncoder().encode(decoded).length;
+      if (bytes > SHARE_LIMIT_BYTES) {
+        // The Share button never writes a link this large, but the hash is
+        // user-editable/attacker-controlled input regardless of how it got
+        // there — enforce the same cap on the way back in.
+        resultsEl.replaceChildren(
+          el("p", { class: "hint" }, `Could not decode the shared link: too large (${bytes} bytes > 64 KB).`),
+        );
+      } else {
+        textarea.value = decoded;
+        runInspect();
+      }
     } catch {
       resultsEl.replaceChildren(el("p", { class: "hint" }, "Could not decode the shared link."));
     }
