@@ -8,6 +8,11 @@ case corpus so the Deadbugz frames are one click away.
 This page is a **demo, not a score**. For recall/false-positive numbers, see
 mcp-guardbench, which scores every guard through its own published CLI.
 
+The page is framable (the CSP meta tag can't set `frame-ancestors`; that
+needs a real HTTP header) and shares the `getmcpm.github.io` origin with any
+other getmcpm GitHub Pages project — both are properties of being hosted on
+GitHub Pages, not choices this repo made.
+
 See [`docs/PLAN.md`](docs/PLAN.md) for the full design, doctrine constraints,
 and verified technical facts this repo was built against.
 
