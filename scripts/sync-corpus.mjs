@@ -7,9 +7,18 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
+// Hardcoded upstream source of truth — never read from the lockfile (see
+// scripts/lib-build-engine.mjs for why a repo URL doesn't belong there).
+// GUARDBENCH_REPO stays available as a local-dev override; the commit-pin
+// check below (line 27) runs unconditionally regardless of override.
+const GUARDBENCH_REPO_URL = "https://github.com/getmcpm/mcp-guardbench.git";
+
 const ROOT = path.resolve(import.meta.dirname, "..");
 const lock = JSON.parse(readFileSync(path.join(ROOT, "engine.lock.json"), "utf8"));
-const repo = process.env.GUARDBENCH_REPO || lock.guardbench.repo;
+const repo = process.env.GUARDBENCH_REPO || GUARDBENCH_REPO_URL;
+if (process.env.GUARDBENCH_REPO) {
+  console.warn(`⚠ GUARDBENCH_REPO override active — fetching from ${repo} instead of ${GUARDBENCH_REPO_URL}.`);
+}
 const commit = lock.guardbench.commit;
 
 function git(args, cwd) {

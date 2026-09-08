@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; form-action 'none'">
 <title>mcpm guard playground</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -13,8 +13,7 @@
   <p id="engine-badge">loading engine info…</p>
   <nav id="header-links"></nav>
   <p class="disclaimer">
-    Runs entirely in your browser. Nothing you paste leaves this tab — there is no server,
-    no analytics, no telemetry.
+    Runs entirely in your browser. Nothing you paste is sent anywhere — there is no server, no analytics, no telemetry. Share only encodes it into this page's URL; Copy only writes your clipboard.
   </p>
 </header>
 

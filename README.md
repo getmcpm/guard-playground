@@ -8,6 +8,11 @@ case corpus so the Deadbugz frames are one click away.
 This page is a **demo, not a score**. For recall/false-positive numbers, see
 mcp-guardbench, which scores every guard through its own published CLI.
 
+The page is framable (the CSP meta tag can't set `frame-ancestors`; that
+needs a real HTTP header) and shares the `getmcpm.github.io` origin with any
+other getmcpm GitHub Pages project — both are properties of being hosted on
+GitHub Pages, not choices this repo made.
+
 See [`docs/PLAN.md`](docs/PLAN.md) for the full design, doctrine constraints,
 and verified technical facts this repo was built against.
 
@@ -15,9 +20,11 @@ and verified technical facts this repo was built against.
 
 The page never hand-copies mcpm's detection code. `scripts/build-engine.mjs`
 shallow-clones [`getmcpm/cli`](https://github.com/getmcpm/cli) at the tag
-pinned in `engine.lock.json`, and bundles the three stateless guard modules
-(`inspect-frame.ts`, `owasp.ts`, `signatures.ts`) for the browser with esbuild
-into `site/engine.mjs` + `site/engine-meta.json`. `scripts/check-engine.mjs`
+pinned in `engine.lock.json`, and bundles the three stateless entry modules
+(`inspect-frame.ts`, `owasp.ts`, `signatures.ts`) for the browser with
+esbuild into `site/engine.mjs` + `site/engine-meta.json` — pulling in
+everything those three import, 13 `src/guard/*` modules in total (run
+`grep -c '^// src/' site/engine.mjs` to recount). `scripts/check-engine.mjs`
 rebuilds into a scratch dir and byte-compares against the committed bundle —
 CI's drift guard.
 

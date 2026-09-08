@@ -75,14 +75,35 @@ function findingsTable(findings) {
   ]);
 }
 
-function frameCard(index, entry) {
-  if ("error" in entry) {
+/**
+ * Runs inspectFrame() (or surfaces the frame's own parse error) exactly
+ * ONCE per frame, returning a plain result object — never a DOM node — so
+ * callers that need the verdict (loadCase's expected-vs-live comparison)
+ * don't have to re-run inspectFrame() a second time on the same frame.
+ *
+ * An uncaught throw from inspectFrame() is caught here too: renderResults()
+ * maps this over every frame inside a debounced input handler, and letting
+ * one frame's crash abort that whole map() would leave the PREVIOUS render's
+ * cards on screen looking like a stale verdict for the frame that actually
+ * just crashed the inspector.
+ */
+function inspectEntry(entry) {
+  if ("error" in entry) return { action: "error", error: entry.error };
+  try {
+    const result = inspectFrame(entry.frame);
+    return { action: result.action, findings: result.findings };
+  } catch (err) {
+    return { action: "error", error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+function frameCard(index, result) {
+  if (result.action === "error") {
     return el("div", { class: "frame-card" }, [
       el("h3", {}, [`frame ${index + 1}`, actionChip("error")]),
-      el("p", { class: "error-text" }, entry.error),
+      el("p", { class: "error-text" }, result.error),
     ]);
   }
-  const result = inspectFrame(entry.frame);
   return el("div", { class: "frame-card" }, [
     el("h3", {}, [`frame ${index + 1}`, actionChip(result.action)]),
     findingsTable(result.findings),
@@ -149,13 +170,14 @@ async function main() {
 
   function renderResults(rawText) {
     const frames = parseFrames(rawText);
-    if (frames.length === 0) {
+    const results = frames.map((entry) => inspectEntry(entry));
+    if (results.length === 0) {
       resultsEl.replaceChildren(el("p", { class: "hint" }, "No frames — paste a JSON-RPC frame above."));
     } else {
-      resultsEl.replaceChildren(...frames.map((entry, i) => frameCard(i, entry)));
+      resultsEl.replaceChildren(...results.map((result, i) => frameCard(i, result)));
     }
     cliBlock.textContent = cliSnippet(rawText, meta.version);
-    return frames;
+    return results;
   }
 
   function runInspect() {
@@ -168,8 +190,8 @@ async function main() {
     row.classList.add("active");
 
     textarea.value = JSON.stringify(kase.message, null, 2);
-    const frames = renderResults(textarea.value);
-    const live = "error" in frames[0] ? "error" : inspectFrame(frames[0].frame).action;
+    const results = renderResults(textarea.value);
+    const live = results[0].action;
     const expected = kase.expected.action;
     const isMatch = live === expected;
     // Three honest outcomes: exact match; flagged at a weaker action than the corpus
@@ -227,6 +249,15 @@ async function main() {
   });
 
   document.getElementById("share-btn").addEventListener("click", () => {
+    // A lone surrogate can't round-trip through TextEncoder: it silently
+    // folds to U+FFFD, so the shared link would decode to different text
+    // than what's in the textarea. Refuse rather than share something wrong.
+    if (!textarea.value.isWellFormed()) {
+      shareNote.hidden = false;
+      shareNote.textContent =
+        "Could not share: the text contains a lone surrogate and cannot be encoded faithfully.";
+      return;
+    }
     const bytes = new TextEncoder().encode(textarea.value).length;
     if (bytes > SHARE_LIMIT_BYTES) {
       shareNote.hidden = false;
@@ -254,8 +285,19 @@ async function main() {
   // ---- restore from a shared link, if present --------------------------
   if (location.hash.startsWith("#f=")) {
     try {
-      textarea.value = fromBase64Url(location.hash.slice(3));
-      runInspect();
+      const decoded = fromBase64Url(location.hash.slice(3));
+      const bytes = new TextEncoder().encode(decoded).length;
+      if (bytes > SHARE_LIMIT_BYTES) {
+        // The Share button never writes a link this large, but the hash is
+        // user-editable/attacker-controlled input regardless of how it got
+        // there — enforce the same cap on the way back in.
+        resultsEl.replaceChildren(
+          el("p", { class: "hint" }, `Could not decode the shared link: too large (${bytes} bytes > 64 KB).`),
+        );
+      } else {
+        textarea.value = decoded;
+        runInspect();
+      }
     } catch {
       resultsEl.replaceChildren(el("p", { class: "hint" }, "Could not decode the shared link."));
     }

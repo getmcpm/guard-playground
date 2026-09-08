@@ -59,3 +59,38 @@ test("a __proto__ key survives as an own property and does not throw or pollute"
   assert.equal(({}).polluted, undefined);
   assert.equal(Object.getPrototypeOf(frame), Object.prototype);
 });
+
+// Review finding [LOW]: two guards below were unpinned by any test.
+
+test("a leading UTF-8 BOM before a pretty-printed frame is stripped before parsing", () => {
+  // A single-line BOM+frame would pass even without the strip: NDJSON
+  // per-line fallback trims each line, and JS's String#trim() already
+  // treats U+FEFF as whitespace, incidentally removing it. A PRETTY-PRINTED
+  // (multi-line) frame is the case that actually exercises the guard: without
+  // the top-level strip, the whole-input JSON.parse throws on the BOM, this
+  // falls through to the NDJSON path, and each line of the single object is
+  // then (wrongly) parsed on its own — producing several error entries
+  // instead of the one frame a correct strip produces.
+  const input = '﻿{\n  "jsonrpc": "2.0",\n  "id": 1\n}\n';
+  const frames = parseFrames(input);
+  assert.equal(frames.length, 1);
+  assert.deepEqual(frames[0], { frame: { jsonrpc: "2.0", id: 1 } });
+});
+
+test("a non-object top-level value is rejected as an error, not fabricated into a pass", () => {
+  // Removing the typeof/null guard in asFrame() would let a bare scalar (or
+  // null) fall through to inspectFrame() as though it were a real JSON-RPC
+  // object, silently reading as a clean "pass" instead of the parse-shape
+  // error it actually is.
+  const frames = parseFrames("5");
+  assert.equal(frames.length, 1);
+  assert.ok("error" in frames[0]);
+  assert.match(frames[0].error, /expected a JSON-RPC object, got number/);
+});
+
+test("a top-level null is rejected as an error", () => {
+  const frames = parseFrames("null");
+  assert.equal(frames.length, 1);
+  assert.ok("error" in frames[0]);
+  assert.match(frames[0].error, /expected a JSON-RPC object, got null/);
+});
