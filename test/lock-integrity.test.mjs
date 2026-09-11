@@ -7,7 +7,7 @@
 // environment; else the maintainer's local read-only checkout when it exists
 // (no network); else the public GitHub URL the build script defaults to —
 // which is what CI uses, exactly as `npm run check:engine` does there. The
-// tag v0.39.1 resolves to the same commit in every clone, so any of the three
+// tag v0.39.2 resolves to the same commit in every clone, so any of the three
 // is a valid oracle; the test injects a deliberately wrong `commit` into the
 // lock it passes to buildEngine and never touches engine.lock.json on disk.
 import { test } from "node:test";
@@ -18,7 +18,7 @@ import path from "node:path";
 import { buildEngine } from "../scripts/lib-build-engine.mjs";
 
 const LOCAL_CLI_CHECKOUT = "/Users/mingshum/repos/getmcpm/cli";
-const LOCKED_COMMIT = "52d7d2b203901e77d769a457511bfe4a6647ba12";
+const LOCKED_COMMIT = "9d199e8a8d084b17474d88e81e1ce3b9e8e8807e";
 
 /** Run `fn` with CLI_REPO pointing at the best available cli source, then restore the env. */
 async function withCliSource(fn) {
@@ -40,7 +40,7 @@ test("buildEngine rejects when the tag resolves to a commit other than the locke
         () =>
           buildEngine(outDir, {
             lock: {
-              cli: { tag: "v0.39.1", commit: "0000000000000000000000000000000000000000" },
+              cli: { tag: "v0.39.2", commit: "0000000000000000000000000000000000000000" },
               guardbench: { commit: "0".repeat(40) },
             },
           }),
@@ -57,7 +57,7 @@ test("buildEngine succeeds when the tag resolves to the locked commit (sanity ch
   try {
     const meta = await withCliSource(() =>
       buildEngine(outDir, {
-        lock: { cli: { tag: "v0.39.1", commit: LOCKED_COMMIT }, guardbench: { commit: "0".repeat(40) } },
+        lock: { cli: { tag: "v0.39.2", commit: LOCKED_COMMIT }, guardbench: { commit: "0".repeat(40) } },
       }),
     );
     assert.equal(meta.commit, LOCKED_COMMIT);
