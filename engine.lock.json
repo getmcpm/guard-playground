@@ -1,7 +1,7 @@
 {
   "cli": {
-    "tag": "v0.40.0",
-    "commit": "62f68ef9c468ba821ae84a040b1f88ce47d6ceb7"
+    "tag": "v0.40.1",
+    "commit": "227ba99b30088605abfcdcfab5247f9212988323"
   },
   "guardbench": {
     "commit": "d2250f4bbb8f6781779410e2863a934474283bf0"
