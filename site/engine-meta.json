@@ -1,7 +1,7 @@
 {
   "package": "@getmcpm/cli",
-  "version": "0.41.0",
-  "tag": "v0.41.0",
-  "commit": "cb00f01dd2de349e2e6a96da3d4502916568650e",
-  "builtAt": "2026-09-19T09:06:00.876Z"
+  "version": "0.42.0",
+  "tag": "v0.42.0",
+  "commit": "e36ce79b16b724dbaa0228ec8f05822a04860bfb",
+  "builtAt": "2026-09-19T15:44:51.359Z"
 }
