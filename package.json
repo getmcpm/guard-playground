@@ -16,7 +16,7 @@
     "serve": "python3 -m http.server 8080 -d site"
   },
   "devDependencies": {
-    "@getmcpm/cli": "0.39.2",
-    "esbuild": "0.28.1"
+    "@getmcpm/cli": "0.40.1",
+    "esbuild": "0.28.2"
   }
 }
