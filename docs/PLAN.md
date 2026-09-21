@@ -153,7 +153,9 @@ Tests (must all pass; each must FAIL if its guard is removed — check that once
    array → error, `__proto__` key survives as an own property and does not throw.
 
 Also: `check:engine` exits 0 on the committed bundle; `engine-meta.json` matches
-`engine.lock.json` (assert in the parity test's setup).
+`engine.lock.json` (a test in the parity file); and the installed `@getmcpm/cli`
+binary's `--version` matches `engine.lock.json`'s `cli.tag` (asserted in the
+parity test's setup).
 
 ## Process
 
