@@ -59,6 +59,20 @@ let allEntries; // corpus + test/extra-frames.ndjson, [{id, message}]
 let verdicts; // mcpm binary verdicts, positionally aligned to allEntries
 
 before(async () => {
+  // Historical failure this guards against: from the v0.40.0 re-pin through
+  // v0.42.0, engine.lock.json's cli.tag moved four times while package.json's
+  // @getmcpm/cli devDependency stayed at 0.39.2, so every "parity against the
+  // published binary" run below silently ran against 0.39.2 instead.
+  const lockTag = JSON.parse(readFileSync(path.join(ROOT, "engine.lock.json"), "utf8")).cli.tag;
+  const lockedVersion = lockTag.replace(/^v/, "");
+  const installedVersion = spawnSync(MCPM_BIN, ["--version"], { encoding: "utf8" }).stdout.trim();
+  if (installedVersion !== lockedVersion) {
+    throw new Error(
+      `installed @getmcpm/cli binary is ${installedVersion}, but engine.lock.json pins ${lockTag} — ` +
+        `bump package.json's @getmcpm/cli devDependency to ${lockedVersion} and run npm install.`,
+    );
+  }
+
   cases = JSON.parse(readFileSync(path.join(ROOT, "site", "corpus.json"), "utf8"));
   const corpusEntries = cases.map((c) => ({ id: c.id, message: c.message }));
   allEntries = [...corpusEntries, ...loadExtraFrames()];
