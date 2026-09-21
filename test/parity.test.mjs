@@ -65,7 +65,11 @@ before(async () => {
   // published binary" run below silently ran against 0.39.2 instead.
   const lockTag = JSON.parse(readFileSync(path.join(ROOT, "engine.lock.json"), "utf8")).cli.tag;
   const lockedVersion = lockTag.replace(/^v/, "");
-  const installedVersion = spawnSync(MCPM_BIN, ["--version"], { encoding: "utf8" }).stdout.trim();
+  const versionResult = spawnSync(MCPM_BIN, ["--version"], { cwd: ROOT, encoding: "utf8" });
+  if (versionResult.error || versionResult.status !== 0) {
+    throw new Error(`could not run ${MCPM_BIN} --version: ${versionResult.error ?? `exit ${versionResult.status}`}`);
+  }
+  const installedVersion = versionResult.stdout.trim().replace(/^v/, "");
   if (installedVersion !== lockedVersion) {
     throw new Error(
       `installed @getmcpm/cli binary is ${installedVersion}, but engine.lock.json pins ${lockTag} — ` +

@@ -58,8 +58,8 @@ GUARDBENCH_REPO=/path/to/getmcpm/mcp-guardbench npm run sync:corpus
 1. Update `engine.lock.json` (`cli.tag` + `cli.commit`).
 2. Bump the `@getmcpm/cli` devDependency in `package.json` to the same version and run `npm install`.
 3. `npm run build:engine`.
-4. `npm run sync:corpus` if guardbench moved (and update `guardbench.commit`).
-5. Commit the bundle and lock together.
+4. If guardbench moved: update `guardbench.commit` in `engine.lock.json`, then `npm run sync:corpus`.
+5. Commit the bundle, `engine.lock.json`, `package.json` and `package-lock.json` together.
 
 `npm test` now fails if the installed `mcpm` binary and `engine.lock.json`'s `cli.tag` disagree, so skipping step 2 is caught rather than silently comparing against the old binary.
 
