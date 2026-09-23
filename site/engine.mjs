@@ -80,6 +80,10 @@ function* stringLeaves(node, budget) {
 function unhandledTarget(_) {
   return null;
 }
+function objectElements(v) {
+  if (!Array.isArray(v)) return [];
+  return v.filter((e) => typeof e === "object" && e !== null);
+}
 function targetSubtree(msg, target) {
   switch (target) {
     case "tool_response": {
@@ -99,37 +103,33 @@ function targetSubtree(msg, target) {
     }
     case "tool_description": {
       if ("result" in msg) {
-        const result = msg.result;
-        const tools = result?.tools;
+        const tools = msg.result?.tools;
         if (!tools) return null;
-        return tools.map((t) => [t.description ?? "", t.title ?? "", t.inputSchema ?? null]);
+        return objectElements(tools).map((t) => [t.description ?? "", t.title ?? "", t.inputSchema ?? null]);
       }
       return null;
     }
     case "tool_annotations": {
       if ("result" in msg) {
-        const result = msg.result;
-        const tools = result?.tools;
+        const tools = msg.result?.tools;
         if (!tools) return null;
-        return tools.map((t) => t.annotations ?? null);
+        return objectElements(tools).map((t) => t.annotations ?? null);
       }
       return null;
     }
     case "resource_content": {
       if ("result" in msg) {
-        const result = msg.result;
-        const contents = result?.contents;
+        const contents = msg.result?.contents;
         if (!Array.isArray(contents)) return null;
-        return contents.map((c) => c.text ?? null);
+        return objectElements(contents).map((c) => c.text ?? null);
       }
       return null;
     }
     case "prompt_content": {
       if ("result" in msg) {
-        const result = msg.result;
-        const messages = result?.messages;
+        const messages = msg.result?.messages;
         if (!Array.isArray(messages)) return null;
-        return messages.map((m) => m.content ?? null);
+        return objectElements(messages).map((m) => m.content ?? null);
       }
       return null;
     }
