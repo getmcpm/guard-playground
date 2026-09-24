@@ -1731,7 +1731,9 @@ var _SIGNATURE_OWASP_TABLE = Object.freeze({
   "orig-hash-mismatch": "unpinnable",
   "spawn-failure": "unpinnable",
   "inspect-rejected": "unpinnable",
+  "forward-serialize-failed": "unpinnable",
   "malformed-frame": "unpinnable",
+  "frame-too-large": "unpinnable",
   ...CONFINE_EVENT_OWASP
 });
 function owaspPinFor(signatureId) {
