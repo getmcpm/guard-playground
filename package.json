@@ -17,6 +17,6 @@
   },
   "devDependencies": {
     "@getmcpm/cli": "0.42.3",
-    "esbuild": "0.28.1"
+    "esbuild": "0.28.2"
   }
 }
