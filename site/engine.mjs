@@ -698,20 +698,30 @@ function detectExfilParams(msg) {
 // src/guard/tool-call-args-walk.ts
 var MAX_DEPTH = 1;
 function* stringArgLeaves(node, depth = 0) {
-  if (node === null || typeof node !== "object") return;
-  if (Array.isArray(node)) {
-    for (const item of node) yield* stringArgLeaves(item, depth);
-    return;
-  }
-  if (depth > MAX_DEPTH) return;
-  for (const key of Object.keys(node)) {
-    if (!Object.hasOwn(node, key)) continue;
-    const value = node[key];
-    if (typeof value === "string") {
-      yield { key, value };
-    } else if (value !== null && typeof value === "object") {
-      yield* stringArgLeaves(value, depth + 1);
+  const stack = [];
+  const enter = (value, d) => {
+    if (value === null || typeof value !== "object") return;
+    if (Array.isArray(value)) stack.push({ node: value, keys: null, depth: d, next: 0 });
+    else if (d <= MAX_DEPTH) stack.push({ node: value, keys: Object.keys(value), depth: d, next: 0 });
+  };
+  enter(node, depth);
+  while (stack.length > 0) {
+    const top = stack[stack.length - 1];
+    if (top.keys === null) {
+      const arr = top.node;
+      if (top.next >= arr.length) stack.pop();
+      else enter(arr[top.next++], top.depth);
+      continue;
     }
+    if (top.next >= top.keys.length) {
+      stack.pop();
+      continue;
+    }
+    const key = top.keys[top.next++];
+    if (!Object.hasOwn(top.node, key)) continue;
+    const value = top.node[key];
+    if (typeof value === "string") yield { key, value };
+    else enter(value, top.depth + 1);
   }
 }
 function toolCallArguments(msg) {
