@@ -161,7 +161,10 @@ function redactSecret(s) {
   return `\u2039redacted ${s.length}-char secret\u203A`;
 }
 var MATCH_SEGMENT_CAP = 32 * 1024;
-var PATTERN_BREAKERS = /[­​-‏‪-‮⁠-⁯﻿]|[\u{E0000}-\u{E007F}]/gu;
+var DEFAULT_IGNORABLE_CLASS = "\\p{Default_Ignorable_Code_Point}";
+var BLANK_FILLER_CLASS = "\\u3164\\uFFA0\\u2800";
+var PATTERN_BREAKERS = new RegExp(`[${DEFAULT_IGNORABLE_CLASS}]`, "gu");
+var BLANK_FILLERS = new RegExp(`[${BLANK_FILLER_CLASS}]`, "gu");
 var CONFUSABLES = {
   // ── Cyrillic → Latin ──
   "\u0430": "a",
@@ -241,7 +244,9 @@ function foldConfusables(s) {
   return out;
 }
 function normalizeSegment(segment) {
-  return foldConfusables(segment.normalize("NFKC").replace(PATTERN_BREAKERS, ""));
+  return foldConfusables(
+    segment.replace(BLANK_FILLERS, " ").normalize("NFKC").replace(PATTERN_BREAKERS, "")
+  );
 }
 var WINDOW_SEAM = "\0".repeat(48);
 function normalizeForMatch(leaf) {
@@ -339,7 +344,10 @@ var HIDDEN_CHAR_TARGETS = /* @__PURE__ */ new Set([
   // scope — invisible chars in fetched files/emails are common and benign. (H2)
   "initialize_instructions"
 ]);
-var HIDDEN_CHAR_CLASS = /[\u200b-\u200f\u2060-\u2064\ufeff\u00ad\u202a-\u202e\u2066-\u2069]|[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]|[\u0080-\u009f]|[\u{E0000}-\u{E007F}]/gu;
+var HIDDEN_CHAR_CLASS = new RegExp(
+  `[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f\\u0080-\\u009f${DEFAULT_IGNORABLE_CLASS}]`,
+  "gu"
+);
 function classifyHiddenChar(ch) {
   const cp = ch.codePointAt(0) ?? 0;
   const hex = `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`;
@@ -352,8 +360,13 @@ function classifyHiddenChar(ch) {
   else if (cp === 8206 || cp === 8207) kind = "bidi-control";
   else if (cp >= 8234 && cp <= 8238 || cp >= 8294 && cp <= 8297) kind = "bidi-control";
   else if (cp >= 917504 && cp <= 917631) kind = "unicode-tag";
+  else if (isVariationSelector(cp)) kind = "variation-selector";
+  else if (cp === 4447 || cp === 4448 || cp === 12644 || cp === 65440) kind = "hangul-filler";
+  else if (cp === 1564) kind = "bidi-control";
+  else if (cp === 847) kind = "combining-grapheme-joiner";
   else if (cp >= 128 && cp <= 159) kind = "C1-control";
-  else kind = "control";
+  else if (cp <= 31 || cp === 127) kind = "control";
+  else kind = "invisible-format";
   return `${kind} (${hex})`;
 }
 var TAG_CHAR_CLASS = /[\u{E0000}-\u{E007F}]/gu;
@@ -393,21 +406,37 @@ function isEmojiJoinComponent(cp) {
   if (cp >= 127995 && cp <= 127999) return true;
   return /\p{Extended_Pictographic}/u.test(String.fromCodePoint(cp));
 }
+var VARIATION_SELECTOR = /\p{Variation_Selector}/u;
+var EXTENDED_PICTOGRAPHIC = /\p{Extended_Pictographic}/u;
+function isVariationSelector(cp) {
+  return cp !== void 0 && VARIATION_SELECTOR.test(String.fromCodePoint(cp));
+}
+function isBenignVariationSelector(s, index) {
+  const before = codePointBefore(s, index);
+  if (before === void 0) return false;
+  const selector = s.codePointAt(index);
+  if (EXTENDED_PICTOGRAPHIC.test(String.fromCodePoint(before))) {
+    return selector === 65038 || selector === 65039;
+  }
+  const isKeycapBase = before >= 48 && before <= 57 || before === 35 || before === 42;
+  return isKeycapBase && selector === 65039 && s.codePointAt(index + 1) === 8419;
+}
 function detectHiddenChars(leaf, target) {
   const scanned = scanWindow(leaf);
   let tagSkip;
   HIDDEN_CHAR_CLASS.lastIndex = 0;
   for (let m = HIDDEN_CHAR_CLASS.exec(scanned); m !== null; m = HIDDEN_CHAR_CLASS.exec(scanned)) {
-    if (m[0].codePointAt(0) === 8205) {
+    const cp = m[0].codePointAt(0) ?? 0;
+    if (cp === 8205) {
       const before = codePointBefore(scanned, m.index);
       const after = scanned.codePointAt(m.index + 1);
       if (isEmojiJoinComponent(before) && isEmojiJoinComponent(after)) continue;
     }
-    const cp = m[0].codePointAt(0) ?? 0;
     if (cp >= 917504 && cp <= 917631) {
       if (tagSkip === void 0) tagSkip = rgiTagSequenceMask(scanned);
       if (isSkipped(tagSkip, m.index)) continue;
     }
+    if (isVariationSelector(cp) && isBenignVariationSelector(scanned, m.index)) continue;
     return [
       {
         signature_id: "hidden-chars-in-metadata",
@@ -452,6 +481,25 @@ function detectTagConcealment(leaf, target) {
     ];
   }
   return [];
+}
+var VARIATION_SELECTOR_RUN = /\p{Variation_Selector}{2,}/u;
+function detectVariationSelectorConcealment(leaf, target) {
+  const m = VARIATION_SELECTOR_RUN.exec(matchWindow(leaf));
+  if (m === null) return [];
+  const first = m[0].codePointAt(0) ?? 0;
+  return [
+    {
+      signature_id: "variation-selector-concealment",
+      category: "OWASP-MCP-1",
+      severity: "high",
+      target,
+      // Deliberately does NOT name the carrier, for the same reason
+      // detectTagConcealment's excerpt does not: inspectServerInitiated re-tags
+      // prompt_content findings to sampling_prompt.
+      matched_text_excerpt: `run of ${[...m[0]].length} variation selectors starting ${classifyHiddenChar(String.fromCodePoint(first))}`,
+      remediation: "Content contains a run of Unicode variation selectors. No standardized variation sequence has two in a row: they render as nothing and a decoder can read one byte from each \u2014 the documented 'emoji smuggling' concealment technique. mcpm-guard does not decode the payload, so this reports the concealment, not what it says. Inspect the server's output; if legitimate (rare), mute via `mcpm guard mute variation-selector-concealment`."
+    }
+  ];
 }
 function inspectTagEncoded(leaf, signatures, target) {
   const segments = leaf.length <= MATCH_SEGMENT_CAP * 2 ? [leaf] : [leaf.slice(0, MATCH_SEGMENT_CAP), leaf.slice(-MATCH_SEGMENT_CAP)];
@@ -609,6 +657,7 @@ function inspectMessage(msg, signatures) {
         findings.push(...detectHiddenChars(leaf, target));
       } else {
         findings.push(...detectTagConcealment(leaf, target));
+        findings.push(...detectVariationSelectorConcealment(leaf, target));
       }
       const plain = inspectAgainstSignatures(leaf, signatures, target);
       findings.push(...plain);
@@ -635,7 +684,7 @@ function canonicalizeKey(rawKey) {
   return camelSplit.toLowerCase().replace(/[\s-]+/g, "_").replace(/_{2,}/g, "_");
 }
 function canonicalToolName(rawName) {
-  return normalizeForMatch(rawName).toLowerCase();
+  return normalizeForMatch(rawName).trim().toLowerCase();
 }
 
 // src/guard/exfil-names.ts
@@ -972,7 +1021,7 @@ function sanitizeForTerminal(s, maxLen = DEFAULT_MAX_LEN) {
 // src/guard/tool-name-confusable.ts
 var CONFUSABLE_TOOL_NAME_SIGNATURE_ID = "tool-name-confusable-duplicate";
 var DECEPTIVE_TOOL_NAME_SIGNATURE_ID = "tool-name-deceptive-characters";
-var INVISIBLE_CHARS = /[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\u206A-\u206F\uFEFF]|[\u{E0000}-\u{E007F}]/u;
+var INVISIBLE_CHARS = new RegExp(`[${DEFAULT_IGNORABLE_CLASS}${BLANK_FILLER_CLASS}]`, "u");
 function isMixedScript(name) {
   if (!/[A-Za-z]/.test(name)) return false;
   for (const ch of name) {
@@ -1026,7 +1075,7 @@ function detectConfusableToolNames(msg) {
       severity: "high",
       target: "tool_description",
       matched_text_excerpt: sanitizeForTerminal(name, 64),
-      remediation: invisible ? `Tool name "${sanitizeForTerminal(name, 64)}" contains an invisible character (zero-width, bidi control, or Unicode TAG). Such a character does not render, so its only effect is to make this name look identical to another one. Report it to the server's publisher.` : `Tool name "${sanitizeForTerminal(name, 64)}" mixes Latin letters with letters from another script \u2014 the standard way to build a look-alike of a trusted tool name (e.g. a Cyrillic "\u043E" for an ASCII "o"). Report it to the server's publisher.`
+      remediation: invisible ? `Tool name "${sanitizeForTerminal(name, 64)}" contains an invisible character (zero-width, bidi control, variation selector, filler, or Unicode TAG). Such a character renders as nothing or as blank space, so its only effect is to make this name look identical to another one. Report it to the server's publisher.` : `Tool name "${sanitizeForTerminal(name, 64)}" mixes Latin letters with letters from another script \u2014 the standard way to build a look-alike of a trusted tool name (e.g. a Cyrillic "\u043E" for an ASCII "o"). Report it to the server's publisher.`
     });
   }
   if (findings.length === 0) return PASS5;
@@ -1522,10 +1571,10 @@ var OWASP_MCP_TOP_10 = [
     id: "tool-name-deceptive-characters",
     category: "OWASP-MCP-1",
     severity: "high",
-    description: "A tool name contains an invisible character, or mixes Latin with another script \u2014 the out-of-table homoglyph class the confusable table cannot fold",
+    description: "A tool name contains an invisible or blank-width character, or mixes Latin with another script \u2014 the out-of-table homoglyph class the confusable table cannot fold",
     target: "tool_description",
     patterns: [],
-    remediation: "A tool name contains an invisible character (zero-width, bidi, Unicode TAG), or mixes Latin letters with letters from another script. Both are ways to build a name that looks identical to a trusted tool's, and neither is folded by the guard's scoped confusable table. A name written wholly in one non-Latin script impersonates nothing and is NOT flagged. Report it to the server's publisher. If this server legitimately uses such names, mute via `mcpm guard mute tool-name-deceptive-characters`."
+    remediation: "A tool name contains an invisible or blank-width character (any default-ignorable codepoint \u2014 zero-width, bidi, variation selector, filler, Unicode TAG \u2014 or a blank Braille cell), or mixes Latin letters with letters from another script. Both are ways to build a name that looks identical to a trusted tool's, and neither is folded by the guard's scoped confusable table. A name written wholly in one non-Latin script impersonates nothing and is NOT flagged. Report it to the server's publisher. If this server legitimately uses such names, mute via `mcpm guard mute tool-name-deceptive-characters`."
   },
   {
     // unicode-tag-concealment — the tag-block PRESENCE floor on the carriers H2
@@ -1545,6 +1594,32 @@ var OWASP_MCP_TOP_10 = [
     target: "tool_response",
     patterns: [],
     remediation: "Content contains Unicode tag-block characters (U+E0000\u2013U+E007F), which render as nothing but are readable by a model \u2014 the documented 'ASCII smuggling' concealment technique. Outside an emoji subdivision flag these do not occur in real text. Inspect the server's output; if legitimate (rare), mute via `mcpm guard mute unicode-tag-concealment`."
+  },
+  {
+    // variation-selector-concealment — the variation-selector-RUN presence floor on
+    // the carriers H2 deliberately skips, exactly as unicode-tag-concealment is the
+    // tag-block floor there. Emitted inline by detectVariationSelectorConcealment
+    // from a codepoint scan, so like the entries above it carries NO patterns.
+    //
+    // Fires on TWO OR MORE variation selectors in a row and nothing else: a single
+    // emoji VS16 (or a keycap, or a CJK ideographic sequence) is what retrieved data
+    // is full of, and no standardized sequence contains two. On the metadata
+    // carriers the same runs are reported by hidden-chars-in-metadata instead, so
+    // one character is never reported under two ids.
+    //
+    // Known gaps, stated here rather than left to be rediscovered: one selector
+    // interleaved after each of many visible characters is not a run and passes;
+    // and there is NO decode-and-rescan pass (inspectTagEncoded can recover a tag
+    // payload because a tag codepoint IS an ASCII letter; a selector run encodes
+    // bytes under a convention the attacker chooses), so this reports that
+    // something was concealed, never what it says. `high` -> warn. (#114)
+    id: "variation-selector-concealment",
+    category: "OWASP-MCP-1",
+    severity: "high",
+    description: "A run of two or more Unicode variation selectors \u2014 invisible on every renderer, readable byte-by-byte by a decoder ('emoji smuggling')",
+    target: "tool_response",
+    patterns: [],
+    remediation: "Content contains a run of Unicode variation selectors. No standardized variation sequence has two in a row: they render as nothing and a decoder can read one byte from each \u2014 the documented 'emoji smuggling' concealment technique. Inspect the server's output; if legitimate (rare), mute via `mcpm guard mute variation-selector-concealment`."
   },
   {
     // TODOS #54 — renderer-code-execution-in-response. See the
@@ -1757,6 +1832,7 @@ var _SIGNATURE_OWASP_TABLE = Object.freeze({
   "owasp-mcp-2-instruction-injection-in-response": "MCP03",
   "hidden-chars-in-metadata": "MCP03",
   "unicode-tag-concealment": "MCP03",
+  "variation-selector-concealment": "MCP03",
   "exfil-param-in-schema": "MCP03",
   "schema-drift": "MCP03",
   "schema-drift-cosmetic": "MCP03",
