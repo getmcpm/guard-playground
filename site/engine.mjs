@@ -52,6 +52,20 @@ if (typeof globalThis.Buffer === "undefined") {
   globalThis.Buffer = { from };
 }
 
+// src/guard/server-declaration.ts
+var SERVER_INFO_META_KEY = "io.modelcontextprotocol/serverInfo";
+function extractServerDeclaration(msg) {
+  if (!("result" in msg) || msg.result === null || typeof msg.result !== "object") return null;
+  const result = msg.result;
+  const legacy = typeof result.protocolVersion === "string";
+  if (!legacy && (result.resultType !== "complete" || !Array.isArray(result.supportedVersions) || result.supportedVersions.length === 0 || !result.supportedVersions.every((v) => typeof v === "string") || result.capabilities === null || typeof result.capabilities !== "object" || Array.isArray(result.capabilities))) return null;
+  return {
+    capabilities: result.capabilities,
+    serverInfo: legacy ? result.serverInfo : result._meta?.[SERVER_INFO_META_KEY],
+    instructions: result.instructions
+  };
+}
+
 // src/guard/patterns.ts
 var MAX_LEAF_WALK_NODES = 1e5;
 function* stringLeaves(node, budget) {
@@ -135,9 +149,12 @@ function targetSubtree(msg, target) {
     }
     case "initialize_instructions": {
       if ("result" in msg) {
-        const result = msg.result;
-        if (typeof result?.protocolVersion !== "string") return null;
-        return [result.instructions ?? null, result.serverInfo ?? null];
+        const declaration = extractServerDeclaration(msg);
+        return [
+          declaration?.instructions ?? null,
+          typeof msg.result?.protocolVersion === "string" ? msg.result.serverInfo ?? null : null,
+          msg.result?._meta?.[SERVER_INFO_META_KEY] ?? null
+        ];
       }
       return null;
     }
@@ -1780,7 +1797,14 @@ function serverInitiatedContent(msg) {
 function inspectServerInitiated(msg) {
   if (!isServerInitiatedMethod(msg)) return null;
   const contentLeaves = serverInitiatedContent(msg);
-  if (contentLeaves.length === 0) return null;
+  const params = msg.params;
+  const tools = "method" in msg && msg.method === "sampling/createMessage" && Array.isArray(params?.tools) ? params.tools : [];
+  if (contentLeaves.length === 0 && tools.length === 0) return null;
+  const result = inspectInputContent(contentLeaves, [tools]);
+  if (result.findings.length === 0) return null;
+  return withReplyToOrigin(result, "id" in msg && msg.id !== void 0);
+}
+function inspectInputContent(contentLeaves, toolLists) {
   const synthetic = {
     jsonrpc: "2.0",
     id: 0,
@@ -1788,11 +1812,71 @@ function inspectServerInitiated(msg) {
     result: { messages: contentLeaves.map((c) => ({ role: "user", content: c })) }
   };
   const scan = inspectMessage(synthetic, OWASP_MCP_TOP_10);
-  if (scan.findings.length === 0) return null;
   const findings = scan.findings.map((f) => ({ ...f, target: "sampling_prompt" }));
   const action = worstAction(findings);
-  const hasId = "id" in msg && msg.id !== void 0;
-  return action === "block" && hasId ? { action, findings, replyToOrigin: true } : { action, findings };
+  const toolFrame = { jsonrpc: "2.0", id: 0, result: { tools: toolLists.flat() } };
+  const nameFindings = toolLists.flatMap((tools) => detectConfusableToolNames({ jsonrpc: "2.0", id: 0, result: { tools } }).findings);
+  return [
+    { action, findings },
+    inspectMessage(toolFrame, OWASP_MCP_TOP_10),
+    detectExfilParams(toolFrame),
+    { action: worstAction(nameFindings), findings: nameFindings }
+  ].reduce(mergeInspect);
+}
+function inspectEmbeddedInputRequests(msg) {
+  if (!("result" in msg) || msg.result === null || typeof msg.result !== "object") return null;
+  const result = msg.result;
+  if (result.resultType !== "input_required" && !("inputRequests" in result)) return null;
+  if (!("inputRequests" in result)) return null;
+  const requests = result.inputRequests;
+  let unsupported = result.resultType !== "input_required";
+  const contentLeaves = [];
+  const toolLists = [];
+  if (requests === null || typeof requests !== "object" || Array.isArray(requests)) {
+    unsupported = true;
+  } else {
+    for (const request of Object.values(requests)) {
+      if (request === null || typeof request !== "object" || Array.isArray(request)) {
+        unsupported = true;
+        continue;
+      }
+      const r = request;
+      if (r.method === "roots/list" && (r.params === void 0 || r.params !== null && typeof r.params === "object" && !Array.isArray(r.params))) continue;
+      if (!isServerInitiatedMethod(r) || r.params === null || typeof r.params !== "object" || Array.isArray(r.params)) {
+        unsupported = true;
+        continue;
+      }
+      for (const content of serverInitiatedContent(r)) contentLeaves.push(content);
+      if (r.method === "sampling/createMessage") {
+        if (!Array.isArray(r.params.messages) || r.params.messages.some(
+          (message) => message === null || typeof message !== "object" || Array.isArray(message) || !("content" in message)
+        )) unsupported = true;
+        if (r.params.systemPrompt !== void 0 && typeof r.params.systemPrompt !== "string") unsupported = true;
+        if (Array.isArray(r.params.tools)) {
+          toolLists.push(r.params.tools);
+          if (r.params.tools.some((tool) => tool === null || typeof tool !== "object" || Array.isArray(tool))) unsupported = true;
+        } else if (r.params.tools !== void 0) unsupported = true;
+      } else {
+        if (typeof r.params.message !== "string") unsupported = true;
+        if (r.params.mode === "url") {
+          if (typeof r.params.url === "string") contentLeaves.push(r.params.url);
+          else unsupported = true;
+        } else if (r.params.mode === void 0 || r.params.mode === "form") {
+          if (r.params.requestedSchema === null || typeof r.params.requestedSchema !== "object" || Array.isArray(r.params.requestedSchema)) unsupported = true;
+        } else unsupported = true;
+      }
+    }
+  }
+  const scan = inspectInputContent(contentLeaves, toolLists);
+  if (!unsupported) return scan;
+  return mergeInspect(scan, { action: "warn", findings: [{
+    signature_id: "guard-unsupported-input-request",
+    category: "COVERAGE",
+    severity: "high",
+    target: "sampling_prompt",
+    matched_text_excerpt: "Unrecognized or malformed embedded input request; inspection coverage is incomplete.",
+    remediation: "Review the server's inputRequests and client compatibility. The frame is forwarded with a coverage warning; this is not a clean inspection."
+  }] });
 }
 function inspectStatelessDetectors(msg) {
   return [
@@ -1807,7 +1891,9 @@ function inspectStatelessDetectors(msg) {
 function inspectFrame(msg) {
   const serverInitiated = inspectServerInitiated(msg);
   if (serverInitiated !== null) return serverInitiated;
-  return inspectStatelessDetectors(msg);
+  const stateless = inspectStatelessDetectors(msg);
+  const embedded = inspectEmbeddedInputRequests(msg);
+  return embedded === null ? stateless : mergeInspect(stateless, embedded);
 }
 
 // src/guard/owasp.ts
@@ -1866,6 +1952,7 @@ var _SIGNATURE_OWASP_TABLE = Object.freeze({
   "handshake-drift-in-session": "unknown",
   // ── unpinnable — guard/relay health signals, not an attack class ──────────
   "guard-inspection-truncated": "unpinnable",
+  "guard-unsupported-input-request": "unpinnable",
   "pins-integrity-failure": "unpinnable",
   "orig-hash-mismatch": "unpinnable",
   "spawn-failure": "unpinnable",
