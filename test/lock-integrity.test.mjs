@@ -4,11 +4,11 @@
 // never silently bundle whatever the tag happens to point at today.
 //
 // Source of the cli history, in order: an explicit CLI_REPO from the
-// environment; else the maintainer's local read-only checkout when it exists
-// (no network); else the public GitHub URL the build script defaults to —
-// which is what CI uses, exactly as `npm run check:engine` does there. The
-// tag v0.39.2 resolves to the same commit in every clone, so any of the three
-// is a valid oracle; the test injects a deliberately wrong `commit` into the
+// environment; else a sibling ../cli checkout when it exists (no network);
+// else the public GitHub URL the build script defaults to — which is what
+// CI uses, exactly as `npm run check:engine` does there. The tag v0.39.2
+// resolves to the same commit in every clone, so any of the three is a
+// valid oracle; the test injects a deliberately wrong `commit` into the
 // lock it passes to buildEngine and never touches engine.lock.json on disk.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -17,13 +17,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { buildEngine } from "../scripts/lib-build-engine.mjs";
 
-const LOCAL_CLI_CHECKOUT = "/Users/mingshum/repos/getmcpm/cli";
+const SIBLING_CLI = path.resolve(import.meta.dirname, "../../cli");
 const LOCKED_COMMIT = "9d199e8a8d084b17474d88e81e1ce3b9e8e8807e";
 
 /** Run `fn` with CLI_REPO pointing at the best available cli source, then restore the env. */
 async function withCliSource(fn) {
   const previous = process.env.CLI_REPO;
-  if (previous === undefined && existsSync(LOCAL_CLI_CHECKOUT)) process.env.CLI_REPO = LOCAL_CLI_CHECKOUT;
+  if (previous === undefined && existsSync(SIBLING_CLI)) process.env.CLI_REPO = SIBLING_CLI;
   try {
     return await fn();
   } finally {
