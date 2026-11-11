@@ -16,6 +16,22 @@ GitHub Pages, not choices this repo made.
 See [`docs/PLAN.md`](docs/PLAN.md) for the full design, doctrine constraints,
 and verified technical facts this repo was built against.
 
+## Release checkpoint — 2026-11-11
+
+The engine source and published CLI dependency are aligned to
+[`v0.53.0`](https://github.com/getmcpm/cli/releases/tag/v0.53.0), source commit
+`476209d681a3482a864db6534f4eda4150aa59b0`. All 136 installed CLI package files,
+including 66 runtime JavaScript files, matched the public npm archive
+(`sha256:8f254bb89636bf52f69d9acf0f660c616483ddfcec45aa09eb497850771e393f`).
+
+The engine rebuild and drift check passed; the generated bundle is byte-identical
+to the previous pin. Corpus sync preserved the 57 cases at guardbench commit
+`329e4e14e4b1f6cfc9c9d7cf547a2dfa4c049aa8`. All 63 tests passed, including published
+CLI parity for those cases plus six extra frames and the browser Buffer shim.
+This records source validation. PR merge and Pages deployment require separate
+verification; the [public engine metadata](https://getmcpm.github.io/guard-playground/engine-meta.json)
+identifies the version actually served.
+
 ## How the engine gets here
 
 The page never hand-copies mcpm's detection code. `scripts/build-engine.mjs`
