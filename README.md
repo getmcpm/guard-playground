@@ -16,13 +16,13 @@ GitHub Pages, not choices this repo made.
 See [`docs/PLAN.md`](docs/PLAN.md) for the full design, doctrine constraints,
 and verified technical facts this repo was built against.
 
-## Release checkpoint — 2026-11-11
+## Release checkpoint — 2026-11-14
 
 The engine source and published CLI dependency are aligned to
-[`v0.53.0`](https://github.com/getmcpm/cli/releases/tag/v0.53.0), source commit
-`476209d681a3482a864db6534f4eda4150aa59b0`. All 136 installed CLI package files,
+[`v0.54.0`](https://github.com/getmcpm/cli/releases/tag/v0.54.0), source commit
+`88bfb58013e639acfbf73081913b2c70ca8c9c56`. All 136 installed CLI package files,
 including 66 runtime JavaScript files, matched the public npm archive
-(`sha256:8f254bb89636bf52f69d9acf0f660c616483ddfcec45aa09eb497850771e393f`).
+(`sha256:3e85d1df5c478a196161f3a0a1a4827e9fa999aecf62adece9c5ac03e4ca20dd`).
 
 The engine rebuild and drift check passed; the generated bundle is byte-identical
 to the previous pin. Corpus sync preserved the 57 cases at guardbench commit
