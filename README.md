@@ -19,9 +19,9 @@ and verified technical facts this repo was built against.
 ## Release checkpoint — 2026-11-20
 
 The browser engine source and CLI dependency are pinned to
-[v0.54.2](https://github.com/getmcpm/cli/releases/tag/v0.54.2), source
-`cfcbbe6e19afb98d984a285ebf361cccb471104c`. The installed CLI files match the authenticated npm
-archive (`sha256:1e55676a7fc73918531b3c9185271485aa74dede501dbf6c91c02494b2b0e981`).
+[v0.54.3](https://github.com/getmcpm/cli/releases/tag/v0.54.3), source
+`01ddde4c8303fdbc4e28f22e89996dd0cde20a8f`. The installed CLI files match the authenticated npm
+archive (`sha256:33c7138e4934a684d94256b762c085dc333e1c8a6bac06373c65bd6cc7b4fe63`).
 
 The engine and pinned 57-case corpus are byte-identical to the previous
 build. The engine drift check and all 63 tests passed, including browser/CLI
