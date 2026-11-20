@@ -16,21 +16,18 @@ GitHub Pages, not choices this repo made.
 See [`docs/PLAN.md`](docs/PLAN.md) for the full design, doctrine constraints,
 and verified technical facts this repo was built against.
 
-## Release checkpoint — 2026-11-14
+## Release checkpoint — 2026-11-20
 
-The engine source and published CLI dependency are aligned to
-[`v0.54.0`](https://github.com/getmcpm/cli/releases/tag/v0.54.0), source commit
-`88bfb58013e639acfbf73081913b2c70ca8c9c56`. All 136 installed CLI package files,
-including 66 runtime JavaScript files, matched the public npm archive
-(`sha256:3e85d1df5c478a196161f3a0a1a4827e9fa999aecf62adece9c5ac03e4ca20dd`).
+The browser engine source and CLI test dependency are pinned to
+[v0.54.1](https://github.com/getmcpm/cli/releases/tag/v0.54.1), source
+`303a1d99074154255dbdb1479a14fb10538ad658`. The installed CLI matches the authenticated npm archive
+(`sha256:3df8db0ca53be483f4888039bf68f5e806b4f2ba47f34e3c488a96659aa02bab`) across all 136 files.
 
-The engine rebuild and drift check passed; the generated bundle is byte-identical
-to the previous pin. Corpus sync preserved the 57 cases at guardbench commit
-`329e4e14e4b1f6cfc9c9d7cf547a2dfa4c049aa8`. All 63 tests passed, including published
-CLI parity for those cases plus six extra frames and the browser Buffer shim.
-This records source validation. PR merge and Pages deployment require separate
-verification; the [public engine metadata](https://getmcpm.github.io/guard-playground/engine-meta.json)
-identifies the version actually served.
+The engine rebuilt byte-for-byte unchanged. Corpus sync retained all 57 cases
+at the existing guardbench pin. The engine drift check and 63 tests passed,
+including browser/CLI detector parity. The
+[public engine metadata](https://getmcpm.github.io/guard-playground/engine-meta.json)
+identifies the version served after deployment.
 
 ## How the engine gets here
 
