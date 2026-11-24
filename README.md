@@ -16,12 +16,12 @@ GitHub Pages, not choices this repo made.
 See [`docs/PLAN.md`](docs/PLAN.md) for the full design, doctrine constraints,
 and verified technical facts this repo was built against.
 
-## Release checkpoint — 2026-11-20
+## Release checkpoint — 2026-11-25
 
 The browser engine source and CLI dependency are pinned to
-[v0.54.4](https://github.com/getmcpm/cli/releases/tag/v0.54.4), source
-`3217071e48a6a07f5d8a2ea3f33192d3f23a0d52`. The installed CLI files match the authenticated npm
-archive (`sha256:ff6ea9f85531f9fa59b340e5f5cb4e465ff749a96e7906c0396b1bff31d4a27d`).
+[v0.54.5](https://github.com/getmcpm/cli/releases/tag/v0.54.5), source
+`b9a9e47662b3642b8f1f54359f8e098d049119a9`. The installed CLI files match the authenticated npm
+archive (`sha256:79b205801164b57136d3e4d83dc7d3d8d43e1735517c24c9639d0932bce9691b`).
 
 The engine and pinned 57-case corpus are byte-identical to the previous
 build. The engine drift check and all 63 tests passed, including browser/CLI
